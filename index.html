@@ -4,120 +4,89 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FruitSeeker</title>
-  <meta name="description" content="FruitSeeker: buscador offline de productos. Sube un CSV/XLSX, guárdalo en el dispositivo y busca por cualquier dato.">
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#ffffff" />
   <style>
-    :root { --bg:#ffffff; --card:#ffffff; --muted:#475569; --text:#0f172a; --accent:#2563eb; --accent-2:#60a5fa; --danger:#ef4444; --border:#e5e7eb; --shadow: 0 8px 28px rgba(15, 23, 42, .08); }
+    :root { --bg:#ffffff; --card:#ffffff; --muted:#475569; --text:#0f172a; --accent:#2563eb; --accent-2:#60a5fa; --danger:#ef4444; --border:#e5e7eb; --shadow: 0 8px 28px rgba(15,23,42,.08); }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; background:var(--bg); color:var(--text);}
-    header{ position:sticky; top:0; z-index:5; background:rgba(255,255,255,0.85); backdrop-filter: blur(6px); border-bottom:1px solid var(--border); }
+    header{ position:sticky; top:0; z-index:5; background:rgba(255,255,255,0.9); backdrop-filter: blur(6px); border-bottom:1px solid var(--border); }
     .wrap{max-width:1120px; margin:0 auto; padding:16px;}
-    .title{display:flex; gap:12px; align-items:center}
-    .logo{width:40px; height:40px; border-radius:10px; background:#fff url(assets/icon-192.png) center/cover no-repeat; border:1px solid var(--border);}
-    h1{font-size:22px; margin:0; letter-spacing:.2px}
-    .muted{color:var(--muted); font-size:13px}
-    main .wrap{display:grid; gap:16px; padding-top:18px; padding-bottom:60px;}
-    .card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow); }
-    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
-    .drop{ border:1.5px dashed var(--border); border-radius:14px; padding:18px; text-align:center; background:#fff; }
-    .drop.drag{border-color:var(--accent); background: #f8fbff;}
-    input[type="file"]{display:none}
-    .btn{ appearance:none; border:none; border-radius:12px; padding:10px 14px; color:#fff; background:var(--accent); font-weight:700; cursor:pointer; box-shadow: 0 4px 16px rgba(37,99,235,.25); }
-    .btn.secondary{background:#f1f5f9; color:var(--text); border:1px solid var(--border); box-shadow:none}
+    .title{display:flex; gap:14px; align-items:center}
+    .logo{width:56px; height:56px; border-radius:14px; background:#fff url(assets/icon-192.png) center/cover no-repeat; border:1px solid var(--border); flex:0 0 auto;}
+    h1{font-size:28px; margin:0; letter-spacing:.2px}
+    .spacer{flex:1}
+    .badge{display:inline-block; border:1px solid var(--border); padding:6px 12px; border-radius:999px; font-size:12px; color:#058b35; background:#ecfdf5}
+    main .wrap{display:grid; gap:18px; padding-top:18px; padding-bottom:60px;}
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow: var(--shadow); }
+    .uploadBox{ display:flex; align-items:center; justify-content:flex-start; flex-wrap:wrap; gap:12px; }
+    .btn{ appearance:none; border:none; border-radius:12px; padding:12px 18px; color:#fff; background:var(--accent); font-weight:700; cursor:pointer; box-shadow: 0 6px 18px rgba(37,99,235,.25); }
     .btn.warn{background:var(--danger); color:#fff; box-shadow:none}
-    .small{font-size:12px}
-    label{font-size:13px; color:var(--muted);}
-    select, input[type="text"]{ width:100%; background:#fff; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:10px 12px; outline:none; }
-    select:focus, input[type="text"]:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+    input[type="file"]{display:none}
+    .pill{display:inline-block; padding:8px 12px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px; color:var(--muted)}
     .grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));}
-    .status{font-size:12px; color:var(--muted);}
-    .badge{display:inline-block; border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-size:12px; color:var(--muted); background:#fff}
+    label{font-size:13px; color:var(--muted);}
+    select, input[type="text"]{ width:100%; background:#fff; color:#0f172a; border:1px solid var(--border); border-radius:12px; padding:10px 12px; outline:none; }
+    select:focus, input[type="text"]:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
     table{width:100%; border-collapse:collapse; font-size:14px; background:#fff;}
     th, td{border-bottom:1px solid var(--border); padding:10px; text-align:left;}
     th{user-select:none; cursor:pointer;}
+    .status{font-size:12px; color:var(--muted);}
     .hidden{display:none}
-    .ok{color:#16a34a}
-    .warn{color:#b91c1c}
     .toast{position:fixed; bottom:16px; right:16px; background:#0f172a; border:1px solid #0b1220; padding:10px 12px; border-radius:12px; color:#fff; font-size:13px; opacity:0; transform:translateY(12px); transition: all .25s ease;}
     .toast.show{opacity:1; transform:translateY(0)}
-    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px; color:#muted}
-    .actions{display:flex; gap:8px; flex-wrap:wrap}
-    .hint{padding:10px 12px; border:1px dashed var(--border); border-radius:12px; background:#f8fafc; color:#334155; font-size:13px}
-    .banner{display:none; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff6f6; color:#9a3412}
-    .blue{color:var(--accent)}
   </style>
 </head>
 <body>
 <header>
   <div class="wrap title">
     <div class="logo" aria-hidden="true"></div>
-    <div>
-      <h1>FruitSeeker</h1>
-      <div class="muted">Sube tu archivo, guárdalo en este dispositivo y busca por cualquier dato. Funciona sin conexión.</div>
-    </div>
-    <div style="flex:1"></div>
-    <div id="offlineBadge" class="badge">Estado: <span id="netState">comprobando…</span></div>
+    <h1>FruitSeeker</h1>
+    <div class="spacer"></div>
+    <div id="offlineBadge" class="badge">Estado: <span id="netState">online</span></div>
   </div>
 </header>
+
 <main>
   <div class="wrap">
     <section class="card">
-      <div class="row" style="justify-content:space-between; align-items:flex-start">
-        <div style="max-width:740px; flex:1">
-          <div id="drop" class="drop" tabindex="0" role="button" aria-label="Zona para soltar archivo">
-            <strong>Arrastra</strong> aquí un archivo <strong>.csv</strong> o <strong>.xlsx</strong>, o
-            <label for="filePick" class="btn secondary">Selecciona archivo</label>
-            <input id="filePick" type="file" accept=".csv,.xlsx,.xls" />
-            <div class="small muted" style="margin-top:8px">Tu archivo se guarda localmente (IndexedDB). No se sube a internet.</div>
-          </div>
+      <div class="uploadBox">
+        <label for="filePick" class="btn">Selecciona archivo</label>
+        <input id="filePick" type="file" accept=".csv,.xlsx,.xls" />
+        <div class="pill">Datos guardados: <span id="count">0</span> filas</div>
+        <button id="clearBtn" class="btn warn">Borrar datos</button>
+      </div>
+      <div id="xlsxBanner" class="status hidden" style="margin-top:6px">Para Excel offline, añade <code>lib/xlsx.full.min.js</code> al proyecto o usa CSV.</div>
 
-          <div id="xlsxBanner" class="banner" style="margin-top:10px">
-            <div><b>Para Excel (.xlsx/.xls) sin internet</b> añade el archivo <code>lib/xlsx.full.min.js</code> al proyecto o exporta tu hoja a CSV.</div>
-            <a class="btn secondary" id="demoBtn">Cargar demo</a>
-          </div>
-
-          <div id="mapBox" class="grid hidden" style="margin-top:14px">
-            <div class="hint" style="grid-column:1/-1">
-              1) Revisa el mapeo de columnas &nbsp; 2) Pulsa <span class="blue"><b>Guardar en este dispositivo</b></span> &nbsp; 3) Busca en el recuadro de abajo.
-            </div>
-            <div>
-              <label>Part number</label>
-              <select id="mapPart"></select>
-            </div>
-            <div>
-              <label>EAN</label>
-              <select id="mapEan"></select>
-            </div>
-            <div>
-              <label>Description</label>
-              <select id="mapDesc"></select>
-            </div>
-            <div>
-              <label>Precio (ALP Inc VAT)</label>
-              <select id="mapPrice"></select>
-            </div>
-            <div style="grid-column:1/-1" class="actions">
-              <button id="saveBtn" class="btn">Guardar en este dispositivo</button>
-              <button id="cancelMap" class="btn secondary">Cancelar</button>
-            </div>
-            <div id="mapStatus" class="status"></div>
-          </div>
+      <div id="mapBox" class="grid hidden" style="margin-top:14px">
+        <div>
+          <label>Part number</label>
+          <select id="mapPart"></select>
         </div>
-        <div style="min-width:260px;">
-          <div class="pill">Datos guardados: <span id="count">0</span> filas</div>
-          <div class="actions" style="margin-top:10px">
-            <button id="clearBtn" class="btn warn">Borrar datos</button>
-          </div>
+        <div>
+          <label>EAN</label>
+          <select id="mapEan"></select>
+        </div>
+        <div>
+          <label>Description</label>
+          <select id="mapDesc"></select>
+        </div>
+        <div>
+          <label>Precio</label>
+          <select id="mapPrice"></select>
+        </div>
+        <div style="grid-column:1/-1; display:flex; gap:8px; flex-wrap:wrap">
+          <button id="saveBtn" class="btn">Guardar en este dispositivo</button>
+          <button id="cancelMap" class="btn" style="background:#64748b">Cancelar</button>
+          <div id="mapStatus" class="status" style="align-self:center"></div>
         </div>
       </div>
     </section>
 
     <section class="card">
-      <div class="hint" id="noDataHint">No hay datos cargados todavía. Sube un CSV/XLSX arriba, mapea y pulsa “Guardar en este dispositivo”, o usa <b>Cargar demo</b>.</div>
       <div class="grid" style="align-items:end">
-        <div style="grid-column:1/-1; margin-top:8px">
+        <div style="grid-column:1/-1">
           <label for="q">Buscar (cualquier dato)</label>
           <input id="q" type="text" placeholder="Escribe parte del part number, EAN, descripción o precio…" autocomplete="off" />
         </div>
@@ -133,7 +102,7 @@
               <th data-k="partNumber">Part number</th>
               <th data-k="ean">EAN</th>
               <th data-k="description">Description</th>
-              <th data-k="price">ALP Inc VAT</th>
+              <th data-k="price">Precio</th>
             </tr>
           </thead>
           <tbody></tbody>

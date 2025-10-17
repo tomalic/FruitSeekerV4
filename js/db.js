@@ -1,5 +1,5 @@
 const DB_NAME = "fruitseeker_db";
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 const STORE_PRODUCTS = "products";
 const STORE_META = "meta";
 

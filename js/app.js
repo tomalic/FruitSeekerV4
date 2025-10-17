@@ -4,47 +4,20 @@ import { saveProducts, getAll, clearAll } from "./db.js";
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
 
-const els = {
-  drop: $("#drop"),
-  file: $("#filePick"),
-  mapBox: $("#mapBox"),
-  mapPart: $("#mapPart"),
-  mapEan: $("#mapEan"),
-  mapDesc: $("#mapDesc"),
-  mapPrice: $("#mapPrice"),
-  saveBtn: $("#saveBtn"),
-  cancelMap: $("#cancelMap"),
-  mapStatus: $("#mapStatus"),
-  count: $("#count"),
-  q: $("#q"),
-  tbody: $("#tbl tbody"),
-  resultCount: $("#resultCount"),
-  clearBtn: $("#clearBtn"),
-  toast: $("#toast"),
-  netState: $("#netState"),
-  offlineBadge: $("#offlineBadge"),
-  searchInfo: $("#searchInfo"),
-  noDataHint: $("#noDataHint"),
-  emptyState: $("#emptyState"),
-  xlsxBanner: $("#xlsxBanner"),
-  demoBtn: $("#demoBtn"),
-};
-
 let DATA = [];
-let SORT = { key: "partNumber", dir: 1 };
 let headers = [];
 let rows = [];
 
 function showToast(msg){
-  els.toast.textContent = msg;
-  els.toast.classList.add("show");
-  setTimeout(()=> els.toast.classList.remove("show"), 2200);
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=> t.classList.remove("show"), 2200);
 }
 
 function updateNetState(){
   const online = navigator.onLine;
-  els.netState.textContent = online ? "online" : "offline";
-  els.offlineBadge.className = "badge " + (online ? "ok" : "warn");
+  $("#netState").textContent = online ? "online" : "offline";
 }
 window.addEventListener("online", updateNetState);
 window.addEventListener("offline", updateNetState);
@@ -54,31 +27,25 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 
-// -------- Price parsing (robust) --------
 function parsePriceSmart(s){
   if(s == null) return null;
   let t = (""+s).trim();
   if(!t) return null;
-  // Remove currency and spaces
   t = t.replace(/[€\s]/g, "");
-  // Find last '.' or ',' as decimal separator
   const lastDot = t.lastIndexOf(".");
   const lastComma = t.lastIndexOf(",");
   let decPos = Math.max(lastDot, lastComma);
   if(decPos === -1){
-    // No separators: should be integer
     const num = t.replace(/[^\d-]/g,"");
     return num ? parseFloat(num) : null;
   }
-  const decSep = t[decPos];
-  let intPart = t.slice(0, decPos).replace(/[.,]/g, ""); // remove thousands
-  let fracPart = t.slice(decPos+1).replace(/[.,]/g, ""); // keep digits
+  let intPart = t.slice(0, decPos).replace(/[.,]/g, "");
+  let fracPart = t.slice(decPos+1).replace(/[.,]/g, "");
   const norm = intPart + "." + fracPart;
   const m = norm.match(/-?\d+(\.\d+)?/);
   return m ? parseFloat(m[0]) : null;
 }
 
-// -------- Header detection --------
 function normalize(s){ return (s||"").toString().trim().toLowerCase(); }
 const KEYWORDS = {
   part: ["erp part number","part number","part","item","code","sku","p/n","pn"],
@@ -115,15 +82,14 @@ function guessMap(hs){
 }
 function fillMapSelectors(hs){
   const fill = (sel)=>{ sel.innerHTML = ""; for(const h of hs){ const o=document.createElement("option"); o.value=h; o.textContent=h||"(vacío)"; sel.appendChild(o);} };
-  fill(els.mapPart); fill(els.mapEan); fill(els.mapDesc); fill(els.mapPrice);
-  const g = guessMap(hs); els.mapPart.value=g.part; els.mapEan.value=g.ean; els.mapDesc.value=g.desc; els.mapPrice.value=g.price;
+  fill($("#mapPart")); fill($("#mapEan")); fill($("#mapDesc")); fill($("#mapPrice"));
+  const g = guessMap(hs); $("#mapPart").value=g.part; $("#mapEan").value=g.ean; $("#mapDesc").value=g.desc; $("#mapPrice").value=g.price;
 }
 
-// -------- Rendering & search --------
-function toNumberMaybe(s){ return parsePriceSmart(s); }
-function renderCount(){ els.count.textContent = DATA.length; els.noDataHint.classList.toggle("hidden", DATA.length>0); }
+function renderCount(){ $("#count").textContent = DATA.length; }
 function renderTable(rows){
-  els.tbody.innerHTML = "";
+  const tbody = $("#tbl tbody");
+  tbody.innerHTML = "";
   const frag = document.createDocumentFragment();
   for(const r of rows){
     const tr = document.createElement("tr");
@@ -133,8 +99,8 @@ function renderTable(rows){
     tr.appendChild(td(priceOut));
     frag.appendChild(tr);
   }
-  els.tbody.appendChild(frag);
-  els.emptyState.classList.toggle("hidden", rows.length>0);
+  tbody.appendChild(frag);
+  $("#emptyState").classList.toggle("hidden", rows.length>0);
 }
 function tokens(s){ return s.toLowerCase().split(/\s+/).filter(Boolean); }
 function filtered(all){
@@ -158,48 +124,28 @@ function doSearch(){
 }
 ["input","keyup","change"].forEach(ev=> $("#q").addEventListener(ev, doSearch));
 
-// Sorting
 $$("th[data-k]").forEach(th=> th.addEventListener("click", ()=>{
   const key = th.dataset.k;
-  if(SORT.key === key) SORT.dir *= -1; else { SORT.key = key; SORT.dir = 1; }
+  if(window._sortKey === key){ window._sortDir *= -1; } else { window._sortKey = key; window._sortDir = 1; }
   const rows = filtered(DATA).sort((a,b)=>{
     const av = a[key] ?? ""; const bv = b[key] ?? "";
-    return (av < bv ? -1 : av > bv ? 1 : 0) * SORT.dir;
+    return (av < bv ? -1 : av > bv ? 1 : 0) * window._sortDir;
   });
   renderTable(rows);
 }));
 
-// Clear DB
 $("#clearBtn").addEventListener("click", async ()=>{
   if(!confirm("¿Borrar todos los datos guardados en este dispositivo?")) return;
   await clearAll(); DATA = []; renderCount(); doSearch(); showToast("Datos borrados.");
 });
 
-// Drag & Drop + file input
-function onDragOver(e){ e.preventDefault(); $("#drop").classList.add("drag"); }
-function onDragLeave(){ $("#drop").classList.remove("drag"); }
-function onDrop(e){ e.preventDefault(); $("#drop").classList.remove("drag"); const f = e.dataTransfer.files?.[0]; if(f) handleFile(f); }
-$("#drop").addEventListener("dragover", onDragOver);
-$("#drop").addEventListener("dragleave", onDragLeave);
-$("#drop").addEventListener("drop", onDrop);
-$("#filePick").addEventListener("change", (e)=>{ const f = e.target.files?.[0]; if(f) handleFile(f); });
-
-// Demo
-$("#demoBtn").addEventListener("click", async ()=>{
-  const demo = [
-    {partNumber:"MP7K3TY/A", ean:"0194253000001", description:"iPad 10.2\" Wi‑Fi 64GB Silver", priceStr:"1.349,00"},
-    {partNumber:"MPXT3SP/A", ean:"0194253000002", description:"iPad Air 11\" Wi‑Fi 128GB Blue", priceStr:"699,00"},
-    {partNumber:"MME73ZM/A", ean:"0194253000003", description:"AirPods (3rd gen) Lightning Case", priceStr:"199,00"},
-    {partNumber:"MK2K3ZM/A", ean:"0194253000004", description:"USB‑C to Lightning Cable (1 m)", priceStr:"25,00"},
-  ].map(x => ({...x, price: parsePriceSmart(x.priceStr)}));
-  await clearAll(); await saveProducts(demo, {uploadedAt:new Date().toISOString(), mapping:"demo"});
-  DATA = await getAll(); renderCount(); doSearch(); $("#q").focus();
-  showToast("Demo cargada. Escribe para ver resultados (precios formateados correctamente).");
+$("#filePick").addEventListener("change", (e)=>{
+  const f = e.target.files?.[0];
+  if(f) handleFile(f);
 });
 
-function showXlsxBanner(show){ const el = document.getElementById("xlsxBanner"); if(el) el.style.display = show ? "grid" : "none"; }
+function showXlsxBanner(show){ const el = $("#xlsxBanner"); if(el) el.classList.toggle("hidden", !show); }
 
-// File handling (CSV/XLSX)
 async function handleFile(file){
   const name = file.name.toLowerCase();
   if(name.endsWith(".csv")){
@@ -241,7 +187,6 @@ async function handleFile(file){
   }
 }
 
-// Save to DB
 $("#saveBtn").addEventListener("click", async ()=>{
   if(!rows.length){ showToast("No hay filas para guardar"); return; }
   const map = { part: $("#mapPart").value, ean: $("#mapEan").value, desc: $("#mapDesc").value, price: $("#mapPrice").value };
@@ -253,11 +198,10 @@ $("#saveBtn").addEventListener("click", async ()=>{
     it.price = parsePriceSmart(it.priceStr);
     if(it.partNumber || it.ean || it.description || it.priceStr){ items.push(it); }
   }
-  await clearAll(); await saveProducts(items, {uploadedAt: new Date().toISOString(), mapping: map});
+  await clearAll();
+  await saveProducts(items, {uploadedAt: new Date().toISOString(), mapping: map});
   DATA = await getAll(); renderCount(); doSearch(); $("#mapBox").classList.add("hidden"); $("#q").focus();
   showToast(`Guardado ${items.length} filas en este dispositivo. Escribe para ver resultados.`);
 });
-
-$("#cancelMap").addEventListener("click", ()=>{ $("#mapBox").classList.add("hidden"); headers=[]; rows=[]; });
 
 (async function init(){ DATA = await getAll(); renderCount(); doSearch(); })();
