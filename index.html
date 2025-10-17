@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product Finder — Offline</title>
+  <meta name="description" content="Buscador offline de productos. Sube un CSV/XLSX, guárdalo en el dispositivo y busca por cualquier dato.">
+  <link rel="manifest" href="manifest.webmanifest" />
+  <meta name="theme-color" content="#141418" />
+  <style>
+    :root {
+      --bg:#0f1115; --card:#16181f; --muted:#9aa4b2; --text:#e8eef5; --accent:#6ee7b7; --accent-2:#8b5cf6; --danger:#f87171;
+      --border:#232632;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial;
+      background:var(--bg); color:var(--text);
+    }
+    header{
+      position:sticky; top:0; z-index:5;
+      background:linear-gradient(180deg, rgba(20,20,24,0.95) 0%, rgba(20,20,24,0.75) 100%);
+      backdrop-filter: blur(6px);
+      border-bottom:1px solid var(--border);
+    }
+    .wrap{max-width:1120px; margin:0 auto; padding:16px;}
+    .title{display:flex; gap:12px; align-items:center}
+    .logo{width:36px; height:36px; border-radius:10px; background:#141418 url(assets/icon-192.png) center/contain no-repeat; border:1px solid var(--border);}
+    h1{font-size:20px; margin:0}
+    .muted{color:var(--muted); font-size:13px}
+    main .wrap{display:grid; gap:16px; padding-top:18px; padding-bottom:60px;}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
+    .drop{
+      border:1.5px dashed var(--border); border-radius:14px; padding:18px; text-align:center;
+    }
+    .drop.drag{border-color:var(--accent)}
+    input[type="file"]{display:none}
+    .btn{
+      appearance:none; border:none; border-radius:12px; padding:10px 14px; color:#0b0d10; background:var(--accent); font-weight:700; cursor:pointer;
+    }
+    .btn.secondary{background:#2b2f3a; color:var(--text); border:1px solid var(--border);}
+    .btn.warn{background:var(--danger); color:#0b0d10;}
+    .small{font-size:12px}
+    label{font-size:13px; color:var(--muted);}
+    select, input[type="text"]{
+      width:100%; background:#0f1218; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      outline:none;
+    }
+    .grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));}
+    .status{font-size:12px; color:var(--muted);}
+    .badge{display:inline-block; border:1px solid var(--border); padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted)}
+    table{width:100%; border-collapse:collapse; font-size:14px;}
+    th, td{border-bottom:1px solid var(--border); padding:10px; text-align:left;}
+    th{user-select:none; cursor:pointer;}
+    tfoot td{border:none}
+    .hidden{display:none}
+    .ok{color:var(--accent)}
+    .warn{color:var(--danger)}
+    .toast{position:fixed; bottom:16px; right:16px; background:#10131a; border:1px solid var(--border); padding:10px 12px; border-radius:12px; color:var(--text); font-size:13px; opacity:0; transform:translateY(12px); transition: all .25s ease;}
+    .toast.show{opacity:1; transform:translateY(0)}
+    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#11141b; border:1px solid var(--border); font-size:12px; color:var(--muted)}
+    .actions{display:flex; gap:8px; flex-wrap:wrap}
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap title">
+    <div class="logo" aria-hidden="true"></div>
+    <div>
+      <h1>Product Finder — Offline</h1>
+      <div class="muted">Sube tu archivo, guárdalo en este dispositivo y busca por cualquier dato. Funciona sin conexión.</div>
+    </div>
+    <div style="flex:1"></div>
+    <div id="offlineBadge" class="badge">Estado: <span id="netState">comprobando…</span></div>
+  </div>
+</header>
+<main>
+  <div class="wrap">
+    <section class="card">
+      <div class="row" style="justify-content:space-between; align-items:flex-start">
+        <div style="max-width:740px; flex:1">
+          <div id="drop" class="drop" tabindex="0" role="button" aria-label="Zona para soltar archivo">
+            <strong>Arrastra</strong> aquí un archivo <strong>.csv</strong> o <strong>.xlsx</strong>, o
+            <label for="filePick" class="btn secondary">Selecciona archivo</label>
+            <input id="filePick" type="file" accept=".csv,.xlsx,.xls" />
+            <div class="small muted" style="margin-top:8px">Tu archivo se guarda localmente (IndexedDB). No se sube a internet.</div>
+          </div>
+          <div id="mapBox" class="grid hidden" style="margin-top:14px">
+            <div>
+              <label>Part number</label>
+              <select id="mapPart"></select>
+            </div>
+            <div>
+              <label>EAN</label>
+              <select id="mapEan"></select>
+            </div>
+            <div>
+              <label>Description</label>
+              <select id="mapDesc"></select>
+            </div>
+            <div>
+              <label>Precio (ALP Inc VAT)</label>
+              <select id="mapPrice"></select>
+            </div>
+            <div style="grid-column:1/-1" class="actions">
+              <button id="saveBtn" class="btn">Guardar en este dispositivo</button>
+              <button id="cancelMap" class="btn secondary">Cancelar</button>
+            </div>
+            <div id="mapStatus" class="status"></div>
+          </div>
+        </div>
+        <div style="min-width:260px;">
+          <div class="pill">Datos guardados: <span id="count">0</span> filas</div>
+          <div class="actions" style="margin-top:10px">
+            <button id="exportBtn" class="btn secondary">Exportar CSV</button>
+            <button id="clearBtn" class="btn warn">Borrar datos</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="grid" style="align-items:end">
+        <div style="grid-column:1/-1">
+          <label for="q">Buscar (cualquier dato)</label>
+          <input id="q" type="text" placeholder="Escribe parte del part number, EAN, descripción o precio…" autocomplete="off" />
+        </div>
+      </div>
+      <div class="status" style="margin-top:8px">
+        <span>Resultados: <span id="resultCount">0</span></span>
+        <span id="searchInfo" class="muted"></span>
+      </div>
+      <div style="overflow:auto; margin-top:8px">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th data-k="partNumber">Part number</th>
+              <th data-k="ean">EAN</th>
+              <th data-k="description">Description</th>
+              <th data-k="price">ALP Inc VAT</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
