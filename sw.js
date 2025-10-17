@@ -1,5 +1,5 @@
-/* FruitSeeker service worker v3 */
-const CACHE_NAME = "fruitseeker-v3";
+/* FruitSeeker service worker v4 */
+const CACHE_NAME = "fruitseeker-v4";
 const ASSETS = [
   "./",
   "./index.html",

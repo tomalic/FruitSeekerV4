@@ -8,10 +8,7 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <meta name="theme-color" content="#ffffff" />
   <style>
-    :root {
-      --bg:#ffffff; --card:#ffffff; --muted:#475569; --text:#0f172a; --accent:#2563eb; --accent-2:#60a5fa; --danger:#ef4444;
-      --border:#e5e7eb; --shadow: 0 8px 28px rgba(15, 23, 42, .08);
-    }
+    :root { --bg:#ffffff; --card:#ffffff; --muted:#475569; --text:#0f172a; --accent:#2563eb; --accent-2:#60a5fa; --danger:#ef4444; --border:#e5e7eb; --shadow: 0 8px 28px rgba(15, 23, 42, .08); }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{ margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial; background:var(--bg); color:var(--text);}
@@ -45,7 +42,7 @@
     .warn{color:#b91c1c}
     .toast{position:fixed; bottom:16px; right:16px; background:#0f172a; border:1px solid #0b1220; padding:10px 12px; border-radius:12px; color:#fff; font-size:13px; opacity:0; transform:translateY(12px); transition: all .25s ease;}
     .toast.show{opacity:1; transform:translateY(0)}
-    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px; color:var(--muted)}
+    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px; color:#muted}
     .actions{display:flex; gap:8px; flex-wrap:wrap}
     .hint{padding:10px 12px; border:1px dashed var(--border); border-radius:12px; background:#f8fafc; color:#334155; font-size:13px}
     .banner{display:none; grid-template-columns:1fr auto; gap:8px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:12px; background:#fff6f6; color:#9a3412}

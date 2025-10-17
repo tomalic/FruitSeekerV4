@@ -54,6 +54,31 @@ if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 
+// -------- Price parsing (robust) --------
+function parsePriceSmart(s){
+  if(s == null) return null;
+  let t = (""+s).trim();
+  if(!t) return null;
+  // Remove currency and spaces
+  t = t.replace(/[€\s]/g, "");
+  // Find last '.' or ',' as decimal separator
+  const lastDot = t.lastIndexOf(".");
+  const lastComma = t.lastIndexOf(",");
+  let decPos = Math.max(lastDot, lastComma);
+  if(decPos === -1){
+    // No separators: should be integer
+    const num = t.replace(/[^\d-]/g,"");
+    return num ? parseFloat(num) : null;
+  }
+  const decSep = t[decPos];
+  let intPart = t.slice(0, decPos).replace(/[.,]/g, ""); // remove thousands
+  let fracPart = t.slice(decPos+1).replace(/[.,]/g, ""); // keep digits
+  const norm = intPart + "." + fracPart;
+  const m = norm.match(/-?\d+(\.\d+)?/);
+  return m ? parseFloat(m[0]) : null;
+}
+
+// -------- Header detection --------
 function normalize(s){ return (s||"").toString().trim().toLowerCase(); }
 const KEYWORDS = {
   part: ["erp part number","part number","part","item","code","sku","p/n","pn"],
@@ -93,16 +118,10 @@ function fillMapSelectors(hs){
   fill(els.mapPart); fill(els.mapEan); fill(els.mapDesc); fill(els.mapPrice);
   const g = guessMap(hs); els.mapPart.value=g.part; els.mapEan.value=g.ean; els.mapDesc.value=g.desc; els.mapPrice.value=g.price;
 }
-function toNumberMaybe(s){
-  if(s == null) return null;
-  let t = (""+s).replace(/\s+/g,"").replace(/[€]/g,"").replace(",", ".");
-  const m = t.match(/-?\d+(\.\d+)?/);
-  return m ? parseFloat(m[0]) : null;
-}
-function renderCount(){
-  els.count.textContent = DATA.length;
-  els.noDataHint.classList.toggle("hidden", DATA.length>0);
-}
+
+// -------- Rendering & search --------
+function toNumberMaybe(s){ return parsePriceSmart(s); }
+function renderCount(){ els.count.textContent = DATA.length; els.noDataHint.classList.toggle("hidden", DATA.length>0); }
 function renderTable(rows){
   els.tbody.innerHTML = "";
   const frag = document.createDocumentFragment();
@@ -110,17 +129,17 @@ function renderTable(rows){
     const tr = document.createElement("tr");
     const td = (v)=>{ const t = document.createElement("td"); t.textContent = v ?? ""; return t; };
     tr.appendChild(td(r.partNumber)); tr.appendChild(td(r.ean)); tr.appendChild(td(r.description));
-    tr.appendChild(td(r.price != null ? (r.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})) : (r.priceStr||"")));
+    const priceOut = (r.price != null) ? r.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}) : (r.priceStr||"");
+    tr.appendChild(td(priceOut));
     frag.appendChild(tr);
   }
   els.tbody.appendChild(frag);
   els.emptyState.classList.toggle("hidden", rows.length>0);
 }
-
 function tokens(s){ return s.toLowerCase().split(/\s+/).filter(Boolean); }
 function filtered(all){
   const q = $("#q").value.trim();
-  if(!q) return []; // <--- cambio: no mostrar nada hasta que haya búsqueda
+  if(!q) return [];
   const toks = tokens(q);
   const rows = [];
   outer: for(const r of all){
@@ -168,18 +187,16 @@ $("#filePick").addEventListener("change", (e)=>{ const f = e.target.files?.[0]; 
 // Demo
 $("#demoBtn").addEventListener("click", async ()=>{
   const demo = [
-    {partNumber:"MP7K3TY/A", ean:"0194253000001", description:"iPad 10.2\" Wi‑Fi 64GB Silver", priceStr:"379,00", price:379.00},
-    {partNumber:"MPXT3SP/A", ean:"0194253000002", description:"iPad Air 11\" Wi‑Fi 128GB Blue", priceStr:"699,00", price:699.00},
-    {partNumber:"MME73ZM/A", ean:"0194253000003", description:"AirPods (3rd gen) Lightning Case", priceStr:"199,00", price:199.00},
-    {partNumber:"MK2K3ZM/A", ean:"0194253000004", description:"USB‑C to Lightning Cable (1 m)", priceStr:"25,00", price:25.00},
-  ];
+    {partNumber:"MP7K3TY/A", ean:"0194253000001", description:"iPad 10.2\" Wi‑Fi 64GB Silver", priceStr:"1.349,00"},
+    {partNumber:"MPXT3SP/A", ean:"0194253000002", description:"iPad Air 11\" Wi‑Fi 128GB Blue", priceStr:"699,00"},
+    {partNumber:"MME73ZM/A", ean:"0194253000003", description:"AirPods (3rd gen) Lightning Case", priceStr:"199,00"},
+    {partNumber:"MK2K3ZM/A", ean:"0194253000004", description:"USB‑C to Lightning Cable (1 m)", priceStr:"25,00"},
+  ].map(x => ({...x, price: parsePriceSmart(x.priceStr)}));
   await clearAll(); await saveProducts(demo, {uploadedAt:new Date().toISOString(), mapping:"demo"});
   DATA = await getAll(); renderCount(); doSearch(); $("#q").focus();
-  // Nota: al no haber query, no se verán filas hasta escribir algo (p.ej. "iPad").
-  showToast("Demo cargada. Escribe para ver resultados (p. ej., iPad).");
+  showToast("Demo cargada. Escribe para ver resultados (precios formateados correctamente).");
 });
 
-// Excel banner helper
 function showXlsxBanner(show){ const el = document.getElementById("xlsxBanner"); if(el) el.style.display = show ? "grid" : "none"; }
 
 // File handling (CSV/XLSX)
@@ -233,7 +250,7 @@ $("#saveBtn").addEventListener("click", async ()=>{
   const items = [];
   for(const r of rows){
     const it = { partNumber: (r[idx.part] ?? "").toString().trim(), ean: (r[idx.ean] ?? "").toString().trim(), description: (r[idx.desc] ?? "").toString().trim(), priceStr: (r[idx.price] ?? "").toString().trim() };
-    it.price = toNumberMaybe(it.priceStr);
+    it.price = parsePriceSmart(it.priceStr);
     if(it.partNumber || it.ean || it.description || it.priceStr){ items.push(it); }
   }
   await clearAll(); await saveProducts(items, {uploadedAt: new Date().toISOString(), mapping: map});
