@@ -1,6 +1,5 @@
-// Tiny IndexedDB wrapper
 const DB_NAME = "fruitseeker_db";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_PRODUCTS = "products";
 const STORE_META = "meta";
 
@@ -13,6 +12,8 @@ function openDB(){
         const s = db.createObjectStore(STORE_PRODUCTS, { keyPath: "id", autoIncrement: true });
         s.createIndex("partNumber", "partNumber", {unique:false});
         s.createIndex("ean", "ean", {unique:false});
+      } else {
+        // We could upgrade indexes here if needed.
       }
       if(!db.objectStoreNames.contains(STORE_META)){
         db.createObjectStore(STORE_META, { keyPath: "k" });
@@ -57,17 +58,4 @@ export async function getAll(){
   });
   db.close();
   return all;
-}
-
-export async function getMeta(){
-  const db = await openDB();
-  const m = await new Promise((resolve, reject)=>{
-    const tx = db.transaction(STORE_META, "readonly");
-    const s = tx.objectStore(STORE_META);
-    const req = s.get("meta");
-    req.onsuccess = ()=> resolve(req.result?.v || {});
-    req.onerror = ()=> reject(req.error);
-  });
-  db.close();
-  return m;
 }

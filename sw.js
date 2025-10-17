@@ -1,5 +1,5 @@
-/* FruitSeeker service worker */
-const CACHE_NAME = "fruitseeker-v1";
+/* FruitSeeker service worker v2 */
+const CACHE_NAME = "fruitseeker-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -10,7 +10,6 @@ const ASSETS = [
   "./js/db.js",
   "./js/csv.js"
 ];
-
 self.addEventListener("install", (e)=>{
   e.waitUntil((async ()=>{
     const cache = await caches.open(CACHE_NAME);
@@ -18,7 +17,6 @@ self.addEventListener("install", (e)=>{
     self.skipWaiting();
   })());
 });
-
 self.addEventListener("activate", (e)=>{
   e.waitUntil((async ()=>{
     const keys = await caches.keys();
@@ -26,7 +24,6 @@ self.addEventListener("activate", (e)=>{
     self.clients.claim();
   })());
 });
-
 self.addEventListener("fetch", (e)=>{
   const url = new URL(e.request.url);
   if (url.origin === self.location.origin) {

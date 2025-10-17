@@ -1,11 +1,10 @@
-// Minimal CSV reader with delimiter auto-detect (comma or semicolon) and quotes support
 export function detectDelimiter(sample){
   const comma = (sample.match(/,/g)||[]).length;
   const semi = (sample.match(/;/g)||[]).length;
   return semi > comma ? ";" : ",";
 }
 export function parseCSV(text){
-  const delim = detectDelimiter(text.slice(0, 1000));
+  const delim = detectDelimiter(text.slice(0, 2000));
   const rows = [];
   let i=0, cur="", inQuotes=false;
   const pushCell = (row)=>{ row.push(cur); cur=""; };
@@ -15,23 +14,14 @@ export function parseCSV(text){
     const c = text[i];
     if(inQuotes){
       if(c === '"'){
-        if(text[i+1] === '"'){ cur+='"'; i++; } // escaped quote
-        else { inQuotes=false; }
-      }else{
-        cur += c;
-      }
+        if(text[i+1] === '"'){ cur+='"'; i++; } else { inQuotes=false; }
+      }else{ cur += c; }
     }else{
-      if(c === '"'){
-        inQuotes = true;
-      }else if(c === delim){
-        pushCell(row);
-      }else if(c === '\n'){
-        pushCell(row); pushRow(row); row=[];
-      }else if(c === '\r'){
-        // ignore \r
-      }else{
-        cur += c;
-      }
+      if(c === '"'){ inQuotes = true; }
+      else if(c === delim){ pushCell(row); }
+      else if(c === '\n'){ pushCell(row); pushRow(row); row=[]; }
+      else if(c === '\r'){}
+      else{ cur += c; }
     }
     i++;
   }
