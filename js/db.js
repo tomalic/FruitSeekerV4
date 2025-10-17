@@ -1,5 +1,5 @@
 const DB_NAME = "fruitseeker_db";
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_PRODUCTS = "products";
 const STORE_META = "meta";
 
@@ -12,8 +12,6 @@ function openDB(){
         const s = db.createObjectStore(STORE_PRODUCTS, { keyPath: "id", autoIncrement: true });
         s.createIndex("partNumber", "partNumber", {unique:false});
         s.createIndex("ean", "ean", {unique:false});
-      } else {
-        // We could upgrade indexes here if needed.
       }
       if(!db.objectStoreNames.contains(STORE_META)){
         db.createObjectStore(STORE_META, { keyPath: "k" });

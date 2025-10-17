@@ -50,12 +50,10 @@ window.addEventListener("online", updateNetState);
 window.addEventListener("offline", updateNetState);
 updateNetState();
 
-// PWA
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("./sw.js").catch(()=>{});
 }
 
-// ---- Header Auto-detect ----
 function normalize(s){ return (s||"").toString().trim().toLowerCase(); }
 const KEYWORDS = {
   part: ["erp part number","part number","part","item","code","sku","p/n","pn"],
@@ -79,7 +77,7 @@ function findHeaderRow(rows){
   for(let i=0;i<limit;i++){
     const sc = scoreHeaderRow(rows[i]);
     if(sc > best.score){ best = {idx:i, score: sc}; }
-    if(sc >= 3) break; // good enough
+    if(sc >= 3) break;
   }
   return best.idx;
 }
@@ -88,53 +86,30 @@ function guessMap(hs){
     const i = hs.findIndex(h => terms.some(t=> normalize(h).includes(t)));
     return i >= 0 ? hs[i] : hs[0] || "";
   }
-  return {
-    part: find(KEYWORDS.part),
-    ean: find(KEYWORDS.ean),
-    desc: find(KEYWORDS.desc),
-    price: find(KEYWORDS.price),
-  };
+  return { part: find(KEYWORDS.part), ean: find(KEYWORDS.ean), desc: find(KEYWORDS.desc), price: find(KEYWORDS.price) };
 }
-
 function fillMapSelectors(hs){
-  const fill = (sel)=>{
-    sel.innerHTML = "";
-    for(const h of hs){
-      const opt = document.createElement("option");
-      opt.value = h;
-      opt.textContent = h || "(vacío)";
-      sel.appendChild(opt);
-    }
-  };
+  const fill = (sel)=>{ sel.innerHTML = ""; for(const h of hs){ const o=document.createElement("option"); o.value=h; o.textContent=h||"(vacío)"; sel.appendChild(o);} };
   fill(els.mapPart); fill(els.mapEan); fill(els.mapDesc); fill(els.mapPrice);
-  const g = guessMap(hs);
-  els.mapPart.value = g.part;
-  els.mapEan.value = g.ean;
-  els.mapDesc.value = g.desc;
-  els.mapPrice.value = g.price;
+  const g = guessMap(hs); els.mapPart.value=g.part; els.mapEan.value=g.ean; els.mapDesc.value=g.desc; els.mapPrice.value=g.price;
 }
-
 function toNumberMaybe(s){
   if(s == null) return null;
   let t = (""+s).replace(/\s+/g,"").replace(/[€]/g,"").replace(",", ".");
   const m = t.match(/-?\d+(\.\d+)?/);
   return m ? parseFloat(m[0]) : null;
 }
-
 function renderCount(){
   els.count.textContent = DATA.length;
   els.noDataHint.classList.toggle("hidden", DATA.length>0);
 }
-
 function renderTable(rows){
   els.tbody.innerHTML = "";
   const frag = document.createDocumentFragment();
   for(const r of rows){
     const tr = document.createElement("tr");
     const td = (v)=>{ const t = document.createElement("td"); t.textContent = v ?? ""; return t; };
-    tr.appendChild(td(r.partNumber));
-    tr.appendChild(td(r.ean));
-    tr.appendChild(td(r.description));
+    tr.appendChild(td(r.partNumber)); tr.appendChild(td(r.ean)); tr.appendChild(td(r.description));
     tr.appendChild(td(r.price != null ? (r.price.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})) : (r.priceStr||"")));
     frag.appendChild(tr);
   }
@@ -145,7 +120,7 @@ function renderTable(rows){
 function tokens(s){ return s.toLowerCase().split(/\s+/).filter(Boolean); }
 function filtered(all){
   const q = $("#q").value.trim();
-  if(!q) return all.slice(0, 1000);
+  if(!q) return []; // <--- cambio: no mostrar nada hasta que haya búsqueda
   const toks = tokens(q);
   const rows = [];
   outer: for(const r of all){
@@ -181,23 +156,16 @@ $("#clearBtn").addEventListener("click", async ()=>{
   await clearAll(); DATA = []; renderCount(); doSearch(); showToast("Datos borrados.");
 });
 
-// DRAG & DROP
+// Drag & Drop + file input
 function onDragOver(e){ e.preventDefault(); $("#drop").classList.add("drag"); }
 function onDragLeave(){ $("#drop").classList.remove("drag"); }
-function onDrop(e){
-  e.preventDefault(); $("#drop").classList.remove("drag");
-  const f = e.dataTransfer.files?.[0];
-  if(f) handleFile(f);
-}
+function onDrop(e){ e.preventDefault(); $("#drop").classList.remove("drag"); const f = e.dataTransfer.files?.[0]; if(f) handleFile(f); }
 $("#drop").addEventListener("dragover", onDragOver);
 $("#drop").addEventListener("dragleave", onDragLeave);
 $("#drop").addEventListener("drop", onDrop);
-$("#filePick").addEventListener("change", (e)=>{
-  const f = e.target.files?.[0];
-  if(f) handleFile(f);
-});
+$("#filePick").addEventListener("change", (e)=>{ const f = e.target.files?.[0]; if(f) handleFile(f); });
 
-// Demo data
+// Demo
 $("#demoBtn").addEventListener("click", async ()=>{
   const demo = [
     {partNumber:"MP7K3TY/A", ean:"0194253000001", description:"iPad 10.2\" Wi‑Fi 64GB Silver", priceStr:"379,00", price:379.00},
@@ -207,12 +175,14 @@ $("#demoBtn").addEventListener("click", async ()=>{
   ];
   await clearAll(); await saveProducts(demo, {uploadedAt:new Date().toISOString(), mapping:"demo"});
   DATA = await getAll(); renderCount(); doSearch(); $("#q").focus();
-  showToast("Demo cargada. Prueba a buscar: iPad, AirPods…");
+  // Nota: al no haber query, no se verán filas hasta escribir algo (p.ej. "iPad").
+  showToast("Demo cargada. Escribe para ver resultados (p. ej., iPad).");
 });
 
-function showXlsxBanner(show){ els.xlsxBanner.style.display = show ? "grid" : "none"; }
+// Excel banner helper
+function showXlsxBanner(show){ const el = document.getElementById("xlsxBanner"); if(el) el.style.display = show ? "grid" : "none"; }
 
-// FILE HANDLING
+// File handling (CSV/XLSX)
 async function handleFile(file){
   const name = file.name.toLowerCase();
   if(name.endsWith(".csv")){
@@ -233,9 +203,7 @@ async function handleFile(file){
         s.src = "./lib/xlsx.full.min.js";
         await new Promise((res, rej)=>{ s.onload = res; s.onerror = rej; document.head.appendChild(s); });
       }catch(err){
-        showXlsxBanner(true);
-        showToast("Añade lib/xlsx.full.min.js al proyecto o exporta a CSV.");
-        return;
+        showXlsxBanner(true); showToast("Añade lib/xlsx.full.min.js al proyecto o exporta a CSV."); return;
       }
     }
     const buf = await file.arrayBuffer();
@@ -256,36 +224,21 @@ async function handleFile(file){
   }
 }
 
-// Save mapped rows to DB
+// Save to DB
 $("#saveBtn").addEventListener("click", async ()=>{
   if(!rows.length){ showToast("No hay filas para guardar"); return; }
-  const map = {
-    part: $("#mapPart").value,
-    ean: $("#mapEan").value,
-    desc: $("#mapDesc").value,
-    price: $("#mapPrice").value,
-  };
-  const idx = {
-    part: headers.indexOf(map.part),
-    ean: headers.indexOf(map.ean),
-    desc: headers.indexOf(map.desc),
-    price: headers.indexOf(map.price),
-  };
+  const map = { part: $("#mapPart").value, ean: $("#mapEan").value, desc: $("#mapDesc").value, price: $("#mapPrice").value };
+  const idx = { part: headers.indexOf(map.part), ean: headers.indexOf(map.ean), desc: headers.indexOf(map.desc), price: headers.indexOf(map.price) };
   if(Object.values(idx).some(v => v < 0)){ showToast("Revisa el mapeo: hay columnas sin asignar."); return; }
   const items = [];
   for(const r of rows){
-    const it = {
-      partNumber: (r[idx.part] ?? "").toString().trim(),
-      ean: (r[idx.ean] ?? "").toString().trim(),
-      description: (r[idx.desc] ?? "").toString().trim(),
-      priceStr: (r[idx.price] ?? "").toString().trim(),
-    };
+    const it = { partNumber: (r[idx.part] ?? "").toString().trim(), ean: (r[idx.ean] ?? "").toString().trim(), description: (r[idx.desc] ?? "").toString().trim(), priceStr: (r[idx.price] ?? "").toString().trim() };
     it.price = toNumberMaybe(it.priceStr);
     if(it.partNumber || it.ean || it.description || it.priceStr){ items.push(it); }
   }
   await clearAll(); await saveProducts(items, {uploadedAt: new Date().toISOString(), mapping: map});
   DATA = await getAll(); renderCount(); doSearch(); $("#mapBox").classList.add("hidden"); $("#q").focus();
-  showToast(`Guardado ${items.length} filas en este dispositivo.`);
+  showToast(`Guardado ${items.length} filas en este dispositivo. Escribe para ver resultados.`);
 });
 
 $("#cancelMap").addEventListener("click", ()=>{ $("#mapBox").classList.add("hidden"); headers=[]; rows=[]; });
