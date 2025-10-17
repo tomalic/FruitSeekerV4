@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Product Finder — Offline</title>
-  <meta name="description" content="Buscador offline de productos. Sube un CSV/XLSX, guárdalo en el dispositivo y busca por cualquier dato.">
+  <title>FruitSeeker</title>
+  <meta name="description" content="FruitSeeker: buscador offline de productos. Sube un CSV/XLSX, guárdalo en el dispositivo y busca por cualquier dato.">
   <link rel="manifest" href="manifest.webmanifest" />
-  <meta name="theme-color" content="#141418" />
+  <meta name="theme-color" content="#ffffff" />
   <style>
     :root {
-      --bg:#0f1115; --card:#16181f; --muted:#9aa4b2; --text:#e8eef5; --accent:#6ee7b7; --accent-2:#8b5cf6; --danger:#f87171;
-      --border:#232632;
+      --bg:#ffffff; --card:#ffffff; --muted:#475569; --text:#0f172a; --accent:#2563eb; --accent-2:#60a5fa; --danger:#ef4444;
+      --border:#e5e7eb; --shadow: 0 8px 28px rgba(15, 23, 42, .08);
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -20,50 +20,54 @@
     }
     header{
       position:sticky; top:0; z-index:5;
-      background:linear-gradient(180deg, rgba(20,20,24,0.95) 0%, rgba(20,20,24,0.75) 100%);
+      background:rgba(255,255,255,0.85);
       backdrop-filter: blur(6px);
       border-bottom:1px solid var(--border);
     }
     .wrap{max-width:1120px; margin:0 auto; padding:16px;}
     .title{display:flex; gap:12px; align-items:center}
-    .logo{width:36px; height:36px; border-radius:10px; background:#141418 url(assets/icon-192.png) center/contain no-repeat; border:1px solid var(--border);}
-    h1{font-size:20px; margin:0}
+    .logo{width:40px; height:40px; border-radius:10px; background:#fff url(assets/icon-192.png) center/cover no-repeat; border:1px solid var(--border);}
+    h1{font-size:22px; margin:0; letter-spacing:.2px}
     .muted{color:var(--muted); font-size:13px}
     main .wrap{display:grid; gap:16px; padding-top:18px; padding-bottom:60px;}
     .card{
-      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow);
     }
     .row{display:flex; gap:12px; flex-wrap:wrap; align-items:center}
     .drop{
-      border:1.5px dashed var(--border); border-radius:14px; padding:18px; text-align:center;
+      border:1.5px dashed var(--border); border-radius:14px; padding:18px; text-align:center; background:#fff;
     }
-    .drop.drag{border-color:var(--accent)}
+    .drop.drag{border-color:var(--accent); background: #f8fbff;}
     input[type="file"]{display:none}
     .btn{
-      appearance:none; border:none; border-radius:12px; padding:10px 14px; color:#0b0d10; background:var(--accent); font-weight:700; cursor:pointer;
+      appearance:none; border:none; border-radius:12px; padding:10px 14px; color:#fff; background:var(--accent); font-weight:700; cursor:pointer;
+      box-shadow: 0 4px 16px rgba(37,99,235,.25);
     }
-    .btn.secondary{background:#2b2f3a; color:var(--text); border:1px solid var(--border);}
-    .btn.warn{background:var(--danger); color:#0b0d10;}
+    .btn.secondary{background:#f1f5f9; color:var(--text); border:1px solid var(--border); box-shadow:none}
+    .btn.warn{background:var(--danger); color:#fff; box-shadow:none}
     .small{font-size:12px}
     label{font-size:13px; color:var(--muted);}
     select, input[type="text"]{
-      width:100%; background:#0f1218; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:10px 12px;
+      width:100%; background:#fff; color:var(--text); border:1px solid var(--border); border-radius:12px; padding:10px 12px;
       outline:none;
     }
+    select:focus, input[type="text"]:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.15)}
     .grid{display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));}
     .status{font-size:12px; color:var(--muted);}
-    .badge{display:inline-block; border:1px solid var(--border); padding:2px 8px; border-radius:999px; font-size:12px; color:var(--muted)}
-    table{width:100%; border-collapse:collapse; font-size:14px;}
+    .badge{display:inline-block; border:1px solid var(--border); padding:4px 10px; border-radius:999px; font-size:12px; color:var(--muted); background:#fff}
+    table{width:100%; border-collapse:collapse; font-size:14px; background:#fff;}
     th, td{border-bottom:1px solid var(--border); padding:10px; text-align:left;}
     th{user-select:none; cursor:pointer;}
     tfoot td{border:none}
     .hidden{display:none}
-    .ok{color:var(--accent)}
-    .warn{color:var(--danger)}
-    .toast{position:fixed; bottom:16px; right:16px; background:#10131a; border:1px solid var(--border); padding:10px 12px; border-radius:12px; color:var(--text); font-size:13px; opacity:0; transform:translateY(12px); transition: all .25s ease;}
+    .ok{color:#16a34a}
+    .warn{color:#b91c1c}
+    .toast{position:fixed; bottom:16px; right:16px; background:#0f172a; border:1px solid #0b1220; padding:10px 12px; border-radius:12px; color:#fff; font-size:13px; opacity:0; transform:translateY(12px); transition: all .25s ease;}
     .toast.show{opacity:1; transform:translateY(0)}
-    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#11141b; border:1px solid var(--border); font-size:12px; color:var(--muted)}
+    .pill{display:inline-block; padding:6px 10px; border-radius:999px; background:#f8fafc; border:1px solid var(--border); font-size:12px; color:var(--muted)}
     .actions{display:flex; gap:8px; flex-wrap:wrap}
+    .hint{padding:10px 12px; border:1px dashed var(--border); border-radius:12px; background:#f8fafc; color:#334155; font-size:13px}
+    .blue{color:var(--accent)}
   </style>
 </head>
 <body>
@@ -71,7 +75,7 @@
   <div class="wrap title">
     <div class="logo" aria-hidden="true"></div>
     <div>
-      <h1>Product Finder — Offline</h1>
+      <h1>FruitSeeker</h1>
       <div class="muted">Sube tu archivo, guárdalo en este dispositivo y busca por cualquier dato. Funciona sin conexión.</div>
     </div>
     <div style="flex:1"></div>
@@ -90,6 +94,9 @@
             <div class="small muted" style="margin-top:8px">Tu archivo se guarda localmente (IndexedDB). No se sube a internet.</div>
           </div>
           <div id="mapBox" class="grid hidden" style="margin-top:14px">
+            <div class="hint" style="grid-column:1/-1">
+              1) Revisa el mapeo de columnas &nbsp; 2) Pulsa <span class="blue"><b>Guardar en este dispositivo</b></span> &nbsp; 3) Busca en el recuadro de abajo.
+            </div>
             <div>
               <label>Part number</label>
               <select id="mapPart"></select>
@@ -116,7 +123,6 @@
         <div style="min-width:260px;">
           <div class="pill">Datos guardados: <span id="count">0</span> filas</div>
           <div class="actions" style="margin-top:10px">
-            <button id="exportBtn" class="btn secondary">Exportar CSV</button>
             <button id="clearBtn" class="btn warn">Borrar datos</button>
           </div>
         </div>
@@ -124,8 +130,9 @@
     </section>
 
     <section class="card">
+      <div class="hint" id="noDataHint">No hay datos cargados todavía. Sube un CSV/XLSX arriba, mapea y pulsa “Guardar en este dispositivo”.</div>
       <div class="grid" style="align-items:end">
-        <div style="grid-column:1/-1">
+        <div style="grid-column:1/-1; margin-top:8px">
           <label for="q">Buscar (cualquier dato)</label>
           <input id="q" type="text" placeholder="Escribe parte del part number, EAN, descripción o precio…" autocomplete="off" />
         </div>
@@ -146,6 +153,7 @@
           </thead>
           <tbody></tbody>
         </table>
+        <div id="emptyState" class="status hidden" style="padding:12px">No se han encontrado resultados.</div>
       </div>
     </section>
   </div>

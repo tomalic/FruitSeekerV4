@@ -1,5 +1,5 @@
 import { parseCSV } from "./csv.js";
-import { saveProducts, getAll, clearAll, getMeta } from "./db.js";
+import { saveProducts, getAll, clearAll } from "./db.js";
 
 const $ = (s)=>document.querySelector(s);
 const $$ = (s)=>Array.from(document.querySelectorAll(s));
@@ -20,19 +20,19 @@ const els = {
   tbl: $("#tbl"),
   tbody: $("#tbl tbody"),
   resultCount: $("#resultCount"),
-  exportBtn: $("#exportBtn"),
   clearBtn: $("#clearBtn"),
   toast: $("#toast"),
   netState: $("#netState"),
   offlineBadge: $("#offlineBadge"),
   searchInfo: $("#searchInfo"),
+  noDataHint: $("#noDataHint"),
+  emptyState: $("#emptyState")
 };
 
 let DATA = []; // in-memory cache
 let SORT = { key: "partNumber", dir: 1 };
 let headers = [];
 let rows = [];
-let mapped = null;
 
 function showToast(msg){
   els.toast.textContent = msg;
@@ -61,10 +61,10 @@ function guessMap(hs){
     return idx >= 0 ? hs[idx] : "";
   };
   return {
-    part: find(["part", "p/n", "pn", "item", "code", "sku"]),
+    part: find(["part", "p/n", "pn", "item", "code", "sku", "part number"]),
     ean: find(["ean", "barcode", "bar code"]),
-    desc: find(["desc", "description", "product", "name"]),
-    price: find(["alp inc vat", "inc vat", "price", "pvp", "precio"]),
+    desc: find(["desc", "description", "product", "name", "descripcion"]),
+    price: find(["alp inc vat", "inc vat", "price", "pvp", "precio", "price inc vat"]),
   };
 }
 
@@ -124,6 +124,7 @@ function buildItems(hs, rows){
 
 function renderCount(){
   els.count.textContent = DATA.length;
+  els.noDataHint.classList.toggle("hidden", DATA.length>0);
 }
 
 function renderTable(rows){
@@ -139,6 +140,7 @@ function renderTable(rows){
     frag.appendChild(tr);
   }
   els.tbody.appendChild(frag);
+  els.emptyState.classList.toggle("hidden", rows.length>0);
 }
 
 function sortBy(key){
@@ -181,36 +183,12 @@ function doSearch(){
   renderTable(rows);
 }
 
-let qTimer = null;
-els.q.addEventListener("input", ()=>{
-  clearTimeout(qTimer);
-  qTimer = setTimeout(doSearch, 120);
-});
+// Make input super responsive and robust:
+["input","keyup","change"].forEach(ev=> els.q.addEventListener(ev, doSearch));
 
 // Sorting
 $$("th[data-k]").forEach(th=>{
   th.addEventListener("click", ()=> sortBy(th.dataset.k));
-});
-
-// Export CSV of current filtered view
-els.exportBtn.addEventListener("click", ()=>{
-  const rows = filtered(DATA);
-  const head = ["Part number","EAN","Description","ALP Inc VAT"];
-  const csvRows = [head.join(",")];
-  for(const r of rows){
-    const priceOut = (r.price != null) ? r.price.toFixed(2) : (r.priceStr||"");
-    const vals = [r.partNumber, r.ean, r.description, priceOut].map(v=>{
-      const s = (v ?? "").toString();
-      return /[",\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s;
-    });
-    csvRows.push(vals.join(","));
-  }
-  const blob = new Blob([csvRows.join("\n")], {type:"text/csv"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "results.csv";
-  a.click();
-  URL.revokeObjectURL(a.href);
 });
 
 // Clear DB
@@ -241,12 +219,13 @@ els.file.addEventListener("change", (e)=>{
 
 // FILE HANDLING
 async function handleFile(file){
-  mapped = null;
   if(file.name.toLowerCase().endsWith(".csv")){
     const text = await file.text();
     const rowsRaw = parseCSV(text);
     if(!rowsRaw.length){ showToast("CSV vacío"); return; }
-    headers = rowsRaw[0].map(h=> (h ?? "").toString().trim());
+    let hs = rowsRaw[0].map(h=> (h ?? "").toString().trim());
+    // If header row seems not valid (numbers only), try to guess header from next row? keep as-is.
+    headers = hs;
     rows = rowsRaw.slice(1);
     fillMapSelectors(headers);
     els.mapBox.classList.remove("hidden");
@@ -262,7 +241,7 @@ async function handleFile(file){
           document.head.appendChild(s);
         });
       }catch(err){
-        showToast("Para leer Excel offline, añade lib/xlsx.full.min.js al proyecto.");
+        showToast("Para leer Excel offline, añade lib/xlsx.full.min.js al proyecto, o usa CSV.");
         return;
       }
     }
@@ -285,7 +264,40 @@ async function handleFile(file){
 // Save mapped rows to DB
 els.saveBtn.addEventListener("click", async ()=>{
   if(!rows.length){ showToast("No hay filas para guardar"); return; }
-  const {items, map} = buildItems(headers, rows);
+  const map = {
+    part: els.mapPart.value,
+    ean: els.mapEan.value,
+    desc: els.mapDesc.value,
+    price: els.mapPrice.value,
+  };
+  const idx = {
+    part: headers.indexOf(map.part),
+    ean: headers.indexOf(map.ean),
+    desc: headers.indexOf(map.desc),
+    price: headers.indexOf(map.price),
+  };
+  // Validate mapping
+  if(Object.values(idx).some(v => v < 0)){
+    showToast("Revisa el mapeo: hay columnas sin asignar.");
+    return;
+  }
+  const items = [];
+  for(const r of rows){
+    const it = {
+      partNumber: (r[idx.part] ?? "").toString().trim(),
+      ean: (r[idx.ean] ?? "").toString().trim(),
+      description: (r[idx.desc] ?? "").toString().trim(),
+      priceStr: (r[idx.price] ?? "").toString().trim(),
+    };
+    it.price = (()=>{
+      let t = (it.priceStr || "").replace(/\s+/g,"").replace(/[€]/g,"").replace(",", ".");
+      const m = t.match(/-?\d+(\.\d+)?/);
+      return m ? parseFloat(m[0]) : null;
+    })();
+    if(it.partNumber || it.ean || it.description || it.priceStr){
+      items.push(it);
+    }
+  }
   await clearAll(); // replace existing
   await saveProducts(items, {
     uploadedAt: new Date().toISOString(),
@@ -295,12 +307,13 @@ els.saveBtn.addEventListener("click", async ()=>{
   renderCount();
   doSearch();
   els.mapBox.classList.add("hidden");
+  els.q.focus();
   showToast(`Guardado ${items.length} filas en este dispositivo.`);
 });
 
 els.cancelMap.addEventListener("click", ()=>{
   els.mapBox.classList.add("hidden");
-  headers = []; rows = []; mapped=null;
+  headers = []; rows = [];
 });
 
 // Load DB on startup

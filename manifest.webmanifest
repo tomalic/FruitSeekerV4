@@ -1,10 +1,10 @@
 {
-  "name": "Product Finder — Offline",
-  "short_name": "Finder Offline",
+  "name": "FruitSeeker",
+  "short_name": "FruitSeeker",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#141418",
-  "theme_color": "#141418",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
   "icons": [
     {
       "src": "assets/icon-192.png",

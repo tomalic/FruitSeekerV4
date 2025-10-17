@@ -1,5 +1,5 @@
-/* Simple offline-first service worker (no external dependencies) */
-const CACHE_NAME = "product-finder-offline-v1";
+/* FruitSeeker service worker */
+const CACHE_NAME = "fruitseeker-v1";
 const ASSETS = [
   "./",
   "./index.html",
@@ -29,21 +29,18 @@ self.addEventListener("activate", (e)=>{
 
 self.addEventListener("fetch", (e)=>{
   const url = new URL(e.request.url);
-  // Only handle same-origin requests
   if (url.origin === self.location.origin) {
     e.respondWith((async ()=>{
       const cached = await caches.match(e.request);
       if (cached) return cached;
       try{
         const res = await fetch(e.request);
-        // Cache GET responses
         if (e.request.method === "GET" && res && res.status === 200) {
           const cache = await caches.open(CACHE_NAME);
           cache.put(e.request, res.clone());
         }
         return res;
       }catch(err){
-        // Offline fallback to cache (if not already matched)
         return cached || new Response("Offline", {status: 503, statusText: "Offline"});
       }
     })());

@@ -1,5 +1,5 @@
 // Tiny IndexedDB wrapper
-const DB_NAME = "pf_offline_db";
+const DB_NAME = "fruitseeker_db";
 const DB_VERSION = 1;
 const STORE_PRODUCTS = "products";
 const STORE_META = "meta";
